@@ -9,7 +9,7 @@ locals {
 module "vpc" {
     source = "terraform-aws-modules/vpc/aws"
 
-    name = "my-vpc"
+    name = "${var.environment}-vpc"
     cidr = var.vpc_cidr
 
     azs             = local.azs #Instead of manually setting which azs, blocks are used to fetch all available az's
@@ -21,7 +21,7 @@ module "vpc" {
     single_nat_gateway = var.environment == "dev" ? true : false
 
     tags = {
-        Terraform = "true"
+        CreatedBy = "terraform"
         Environment = "dev"
     }
 }
