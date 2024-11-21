@@ -7,50 +7,56 @@ data "terraform_remote_state" "base" {
   }
 }
 
-resource "aws_security_group" "alb" {
-  name        = "${var.environment}-alb-sg"
-  description = "Security group for ALB"
-  vpc_id      = data.terraform_remote_state.base.outputs.vpc_id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow HTTP web traffic"
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow HTTPS web traffic"
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all outbound traffic"
-  }
-
-  tags = {
-    Name = "alb-sg"
-  }
+data "aws_vpc" "vpc"{
+    filter {
+        name    = "tag:Name"
+        values  = ["${var.environment}-vpc"]
+    }
 }
+
+data "aws_subnets" "vpc_public_subnets"{
+    filter {
+        name    = "vpc-id"
+        values  = [data.aws_vpc.vpc]
+    }
+    filter {
+      name = "tag:Name"
+      values = ["${var.environment}-vpc-public-*"]
+    }
+}
+
 
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
-  version = "~> 8.0"
+  version = "~> 9.12.0"
 
   name    = "${var.environment}-alb"
-  vpc_id  = data.terraform_remote_state.base.outputs.vpc_id
-  subnets = data.terraform_remote_state.base.outputs.public_subnets
+  vpc_id  = data.aws_vpc.vpc
+  subnets = data.aws_subnets.vpc_public_subnets
 
   # Assign the security group to the ALB
-  security_groups = [aws_security_group.alb.id]
+  security_group_ingress_rules = {
+    all_http = {
+      from_port   = 80
+      to_port     = 80
+      ip_protocol = "tcp"
+      description = "HTTP web traffic"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+    all_https = {
+      from_port   = 443
+      to_port     = 443
+      ip_protocol = "tcp"
+      description = "HTTPS web traffic"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+  }
+  security_group_egress_rules = {
+    all = {
+      ip_protocol = "-1"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+  }
 
   target_groups = [
     {
@@ -69,9 +75,9 @@ module "alb" {
     }
   ]
 
-  http_tcp_listeners = [
+  listeners = [
     {
-      port               = 8080
+      port               = 80
       protocol           = "HTTP"
       target_group_index = 0
     }
