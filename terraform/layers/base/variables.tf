@@ -13,8 +13,3 @@ variable "vpc_cidr" { #Sets default CIDR range
     description = "CIDR range"
     default = "10.0.0.0/16"
 }
-
-variable "Web_files_s3_bucket_name" {
-  type = string
-  default = "dev-ec2webfiles-s3-bucket"
-}

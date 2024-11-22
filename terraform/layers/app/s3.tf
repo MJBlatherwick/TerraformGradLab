@@ -1,5 +1,9 @@
+data "aws_s3_bucket" "Web_files_s3_bucket" {
+  bucket = "${var.environment}-ec2webfiles-s3-bucket"
+}
+
 resource "aws_s3_object" "object" {
-  bucket = var.Web_files_s3_bucket_name
+  bucket = data.aws_s3_bucket.Web_files_s3_bucket.id
   key    = "index.html"
-  source = "/Users/mattblatherwick/LABS/TerraformGradLab/src/lab1/src/index.html"
+  source = "./src/index.html"
 }
